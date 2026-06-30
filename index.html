@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quiz Lookup</title>
+<style>
+  :root {
+    --bg: #0b0912;          
+    --panel: #161421;
+    --border: #312b45;
+    --text: #e0ddef;
+    --muted: #8a81ac;
+    --accent: #9d7cff;
+    --answer-bg: #1f1b2e;
+    --answer-border: #5d4a96;
+    --answer-text: #cbb9ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 40px 16px;
+  }
+  .wrap {
+    width: 100%;
+    max-width: 680px;
+  }
+  h1 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+  }
+  input#search {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input#search:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(157, 124, 255, 0.2);
+  }
+  .status {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .answer-box {
+    margin-top: 18px;
+    padding: 18px 20px;
+    border-radius: 10px;
+    background: var(--answer-bg);
+    border: 1px solid var(--answer-border);
+    display: none;
+  }
+  .answer-box.show { display: block; }
+  .answer-box .label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--answer-text);
+    opacity: 0.8;
+    margin-bottom: 6px;
+  }
+  .answer-box .question {
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .answer-box .answer {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--answer-text);
+  }
+  .back-link {
+    margin-top: 12px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    cursor: pointer;
+    display: inline-block;
+  }
+  .back-link:hover {
+    color: var(--text);
+    text-decoration: underline;
+  }
+  .matches {
+    margin-top: 18px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .matches.hidden { display: none; }
+  .match-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    font-size: 0.95rem;
+    cursor: default;
+  }
+  .match-item:last-child { border-bottom: none; }
+  .match-item.clickable {
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .match-item.clickable:hover {
+    background: #20242e;
+  }
+  .match-item mark {
+    background: rgba(157, 124, 255, 0.3); /* Transparent purple highlight */
+    color: #fff;
+    border-radius: 4px;
+  }
+  .empty-msg {
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+  .count-badge {
+    display: inline-block;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 1px 9px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-left: 8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pitch Rush Quiz Lookup</h1>
+  <div class="sub">Created by Auvria ❤️</div>
+  <div class="sub">Type keywords in any order (years, names, terms) and the possible questions will appear :) If there's more than one, click on it! <b>Note:</b> This dataset is maybe 98 percent correct. There can still be slight issues, and in particular there's actually one question that appears sometimes that has two different answers, be warned! (It's the one about scoring in four World Cups)</div>
+
+  <input id="search" type="text" placeholder="Type keywords, e.g. 2014 golden boot..." autocomplete="off" autofocus>
+
+  <div class="status" id="status"></div>
+
+  <div class="answer-box" id="answerBox">
+    <div class="label" id="answerLabel">Answer</div>
+    <div class="question" id="answerQuestion"></div>
+    <div class="answer" id="answerText"></div>
+    <div class="back-link" id="backLink" style="display:none;">&larr; back to matches</div>
+  </div>
+
+  <div class="matches hidden" id="matchesBox"></div>
+  <div class="empty-msg" id="emptyMsg" style="display:none;">No matching questions.</div>
+</div>
+
+<script>
+const QUIZ_DATA = [{"q": "Which organization hosts the World Cup?", "a": "Fédération Internationale de Football Association (FIFA)"}, {"q": "How often is the World Cup held?", "a": "Every 4 years"}, {"q": "How many players does one football team usually have on the pitch?", "a": "11"}, {"q": "How many points is one goal worth in football?", "a": "1"}, {"q": "What does a red card mean in football?", "a": "Sent off"}, {"q": "What does a yellow card mean in football?", "a": "Warning"}, {"q": "Where is a corner kick taken from?", "a": "Corner area"}, {"q": "Where is a goalkeeper allowed to use their hands?", "a": "Penalty area"}, {"q": "Which body part are outfield players not allowed to use to touch the ball?", "a": "Hands"}, {"q": "What does the referee usually use to stop play?", "a": "Whistle"}, {"q": "Which line must the whole ball cross for a goal to count?", "a": "Goal line"}, {"q": "Where is kick-off usually taken?", "a": "Center circle"}, {"q": "What kind of field is football usually played on?", "a": "Grass pitch"}, {"q": "What shape is a football pitch?", "a": "Rectangle"}, {"q": "How many goals are there on a standard football pitch?", "a": "2"}, {"q": "What shape is a football?", "a": "Round (spherical)"}, {"q": "What is the circle at the center of the pitch called?", "a": "Center circle"}, {"q": "What is the center circle mainly used for?", "a": "Kick-off"}, {"q": "Which country is Lionel Messi from?", "a": "Argentina"}, {"q": "Which country is Cristiano Ronaldo from?", "a": "Portugal"}, {"q": "Which country is Kylian Mbappé from?", "a": "France"}, {"q": "Which body part do football players use most often to control the ball?", "a": "Feet"}, {"q": "What is it called when a player hits the ball with their head?", "a": "Header"}, {"q": "Which body part is used for a header?", "a": "Head"}, {"q": "What type of competition is the World Cup?", "a": "International competition for national teams"}, {"q": "What do goalkeepers usually wear to protect their hands?", "a": "Gloves"}, {"q": "What do players wear to protect their shins?", "a": "Shin guards"}, {"q": "What does a team captain wear to show their identity?", "a": "Captain's armband"}, {"q": "What do you call a player who comes on from the bench?", "a": "Substitute"}, {"q": "What is it called when a player moves forward with the ball?", "a": "Dribbling"}, {"q": "What is it called when a player wins the ball from an opponent?", "a": "Tackle"}, {"q": "What is it called when a player fakes one way and moves another?", "a": "Feint"}, {"q": "What is it called when a player scores in their own goal?", "a": "Own goal"}, {"q": "What is it called when a goalkeeper stops a shot?", "a": "Save"}, {"q": "What is it called when a player faces the goalkeeper alone?", "a": "One-on-one"}, {"q": "How are teams usually placed into groups?", "a": "Drawing lots"}, {"q": "How many teams will compete in the 2026 World Cup?", "a": "48"}, {"q": "How many countries are co-hosting the 2026 World Cup?", "a": "3"}, {"q": "What is it called when a team concedes no goals?", "a": "Clean sheet"}, {"q": "What is a match at your own stadium called?", "a": "Home game"}, {"q": "What is a match at the opponent's stadium called?", "a": "Away game"}, {"q": "What is the World Cup award for the best goalkeeper?", "a": "Golden Glove Award"}, {"q": "What is the break between the two halves called?", "a": "Half-time"}, {"q": "What are the vertical posts on both sides of the goal called?", "a": "Goalposts"}, {"q": "What do you call a player whose main job is to score goals?", "a": "Forward"}, {"q": "What do you call a player mainly responsible for defending?", "a": "Defender"}, {"q": "What do you call a player who links attack and defense in midfield?", "a": "Midfielder"}, {"q": "What do you call a fast attacking player on the wing?", "a": "Winger"}, {"q": "What is it called when a player sends the ball to a teammate?", "a": "Pass"}, {"q": "What is it called when a player kicks the ball toward the goal?", "a": "Shot"}, {"q": "What is it called when a player passes the ball from the wing toward the area near the opponent's goal?", "a": "Cross"}, {"q": "What is it called when a player passes the ball over a long distance?", "a": "Long pass"}, {"q": "What is it called when a player cuts off a pass and wins the ball?", "a": "Interception"}, {"q": "What is it called when a player kicks the ball out of danger?", "a": "Clearance"}, {"q": "What is it called when a player stops and controls an incoming ball?", "a": "Trap"}, {"q": "What is it called when a player keeps the ball under control?", "a": "Ball control"}, {"q": "What is it called when a player uses their body to protect the ball from an opponent?", "a": "Shielding"}, {"q": "What do you call a pass that helps a teammate score?", "a": "Assist"}, {"q": "What is the restart awarded to the fouled team after a foul?", "a": "Free kick"}, {"q": "What kick is usually awarded after a foul inside the penalty area?", "a": "Penalty kick"}, {"q": "What is it called when the defending team restarts after the attacking team kicks the ball over the goal line?", "a": "Goal kick"}, {"q": "What is it called when the ball is thrown back in after crossing the touchline?", "a": "Throw-in"}, {"q": "What decides the winner of a tied match through a series of penalty kicks?", "a": "Penalty shoot-out"}, {"q": "What is the added period played after a match is tied in regular time?", "a": "Extra time"}, {"q": "What do you call the additional time added by the referee near the end of a match?", "a": "Stoppage time"}, {"q": "What are the matches used to qualify for the World Cup called?", "a": "Qualifiers"}, {"q": "What is the stage where teams first play in groups?", "a": "Group stage"}, {"q": "What is the stage where a team is eliminated after losing a match?", "a": "Knockout stage"}, {"q": "What is the stage when only 8 teams remain in the tournament?", "a": "Quarterfinals"}, {"q": "What is the round before the final called?", "a": "Semifinal"}, {"q": "What is the last match that decides the champion called?", "a": "Final"}, {"q": "What is the team that finishes first in a tournament called?", "a": "Champion"}, {"q": "What is the team that finishes second in a tournament called?", "a": "Runner-up"}, {"q": "What is it called when two teams finish with the same score?", "a": "Draw"}, {"q": "What is it called when a team wins a match?", "a": "Win"}, {"q": "How many halves are in a standard football match?", "a": "2"}, {"q": "What is the line that divides the pitch into two halves?", "a": "Halfway line"}, {"q": "Where is a penalty kick taken from?", "a": "Penalty spot"}, {"q": "What is the net behind the goal called?", "a": "Net"}, {"q": "What is the horizontal bar at the top of the goal called?", "a": "Crossbar"}, {"q": "Who is responsible for team tactics and lineup?", "a": "Head coach"}, {"q": "Who assists the referee along the touchline?", "a": "Assistant referee"}, {"q": "What video review system helps referees make calls?", "a": "VAR"}, {"q": "Where do substitutes wait to enter the match?", "a": "Substitute bench"}, {"q": "What is the group of players who start a match called?", "a": "Starting lineup"}, {"q": "What is it called when a player kicks the ball into the opponent's goal?", "a": "Goal"}, {"q": "What decides which team kicks off first?", "a": "Coin toss"}, {"q": "What is the World Cup award for the top goalscorer?", "a": "Golden Boot Award"}, {"q": "What is the World Cup award for the best player?", "a": "Golden Ball Award"}, {"q": "What do goalkeepers usually wear to protect their hands?", "a": "Gloves"}, {"q": "What do players wear to protect their shins?", "a": "Shin guards"}, {"q": "What does a team captain wear to show their identity?", "a": "Captain's armband"}, {"q": "What do you call a player who comes on from the bench?", "a": "Substitute"}, {"q": "What is it called when a player moves forward with the ball?", "a": "Dribbling"}, {"q": "What is it called when a player wins the ball from an opponent?", "a": "Tackle"}, {"q": "What is it called when a player fakes one way and moves another?", "a": "Feint"}, {"q": "What is it called when a player scores in their own goal?", "a": "Own goal"}, {"q": "What is it called when a goalkeeper stops a shot?", "a": "Save"}, {"q": "What is it called when a player faces the goalkeeper alone?", "a": "One-on-one"}, {"q": "How are teams usually placed into groups?", "a": "Drawing lots"}, {"q": "How many teams will compete in the 2026 World Cup?", "a": "48"}, {"q": "How many countries are co-hosting the 2026 World Cup?", "a": "3"}, {"q": "What is it called when a team concedes no goals?", "a": "Clean sheet"}, {"q": "What is a match at your own stadium called?", "a": "Home game"}, {"q": "What is a match at the opponent's stadium called?", "a": "Away game"}, {"q": "What is the World Cup award for the best goalkeeper?", "a": "Golden Glove Award"}, {"q": "What is the break between the two halves called?", "a": "Half-time"}, {"q": "What are the vertical posts on both sides of the goal called?", "a": "Goalposts"}, {"q": "What do you call a player whose main job is to score goals?", "a": "Forward"}, {"q": "What do you call a player mainly responsible for defending?", "a": "Defender"}, {"q": "What do you call a player who links attack and defense in midfield?", "a": "Midfielder"}, {"q": "What do you call a fast attacking player on the wing?", "a": "Winger"}, {"q": "What is it called when a player sends the ball to a teammate?", "a": "Pass"}, {"q": "What is it called when a player kicks the ball toward the goal?", "a": "Shot"}, {"q": "Which national team has won the most World Cup titles?", "a": "Brazil"}, {"q": "Which team won the 2022 World Cup in Qatar?", "a": "Argentina"}, {"q": "In which year was the first World Cup held?", "a": "1930"}, {"q": "Which player, known as the \"King of Football\", won three World Cup titles?", "a": "Pelé"}, {"q": "Which country hosted the 2014 World Cup?", "a": "Brazil"}, {"q": "Which European national team has won the most World Cup titles?", "a": "Both Germany and Italy"}, {"q": "Which Argentine football star scored the \"Hand of God\" goal at the 1986 World Cup?", "a": "Maradona"}, {"q": "How long is a World Cup match (excluding extra time)?", "a": "90 minutes"}, {"q": "Who scored 2 goals for France in the 1998 World Cup final to secure the title?", "a": "Zidane"}, {"q": "Which team won the World Cup for the first time in 2010?", "a": "Spain"}, {"q": "Which team has won back-to-back World Cup titles?", "a": "Italy"}, {"q": "Which German goalkeeper won the Golden Glove at the 2014 World Cup?", "a": "Neuer"}, {"q": "Which year saw the first World Cup hosted in Africa?", "a": "2010"}, {"q": "How many matches does a team usually play in the World Cup group stage?", "a": "3"}, {"q": "Who is the all-time top goalscorer in World Cup history?", "a": "Klose"}, {"q": "Which team beat Italy in a penalty shoot-out to win the 1994 World Cup final?", "a": "Brazil"}, {"q": "In which World Cup final was Zidane sent off for headbutting Materazzi?", "a": "2006"}, {"q": "Who won the Golden Ball (Best Player) at the 2014 World Cup?", "a": "Messi"}, {"q": "What kind of image is usually chosen as the World Cup mascot?", "a": "A locally inspired cartoon figure"}, {"q": "How often is the World Cup held?", "a": "Every 4 years"}, {"q": "Who won the Golden Boot at the 2002 World Cup with 8 goals?", "a": "Ronaldo"}, {"q": "Which Portuguese star has scored across multiple World Cups?", "a": "Cristiano Ronaldo"}, {"q": "Which World Cup first introduced VAR (Video Assistant Referee) technology?", "a": "2018"}, {"q": "Who scored a hat-trick in the 2022 World Cup final but failed to win the title?", "a": "Mbappé"}, {"q": "Which Colombian goalkeeper is known for his iconic \"scorpion kick\" save?", "a": "Higuita"}, {"q": "Which team won the World Cup for the first time in 1998?", "a": "France"}, {"q": "Who holds the record for the most goals in a single World Cup tournament (13 goals)?", "a": "Fontaine"}, {"q": "Which World Cup final saw Italy beat France in a penalty shoot-out to win the title?", "a": "2006"}, {"q": "Who was the first player to score in four World Cups?", "a": "Uwe Seeler"}, {"q": "Who won the Golden Ball at the 2018 World Cup?", "a": "Modrić"}, {"q": "Which team has won the most World Cup titles on home soil?", "a": "Only once each"}, {"q": "Which World Cup is widely regarded as the \"most beautiful\" in history for its attacking play and star players?", "a": "1970"}, {"q": "Who won the Golden Boot at the 2006 World Cup?", "a": "Klose"}, {"q": "Who is the youngest-ever goalscorer in a World Cup final?", "a": "Pelé"}, {"q": "Which World Cup's official theme song was \"Waka Waka (This Time for Africa)\"?", "a": "2010"}, {"q": "Who won the Golden Boot at the 2018 World Cup?", "a": "Kane"}, {"q": "Who is regarded as one of the leaders of Belgium's golden generation and performed brilliantly at the 2018 World Cup?", "a": "Hazard"}, {"q": "Which World Cup was the first to introduce individual awards such as the Golden Ball, Golden Boot, and Golden Glove?", "a": "1994"}, {"q": "Who stood out at the 2002 World Cup for his distinctive haircut?", "a": "Ronaldo"}, {"q": "Which team, led by Kempes, won the World Cup for the first time in 1978?", "a": "Argentina"}, {"q": "Who is the only defender ever to score in two World Cup finals?", "a": "Paul Breitner"}, {"q": "Which World Cup featured Maradona's \"Goal of the Century\" and \"Hand of God\"?", "a": "1986"}, {"q": "Who led Germany as captain to the 1974 World Cup title?", "a": "Beckenbauer"}, {"q": "Who holds the record for the most red cards in World Cup history?", "a": "Rigobert Song"}, {"q": "Who stood out at the 2002 World Cup for his iconic stepovers?", "a": "Ronaldo"}, {"q": "Which Cameroonian player was sent off twice in World Cup history?", "a": "Rigobert Song"}, {"q": "Who won the Golden Boot (Best Goalscorer) at the 2014 World Cup?", "a": "James Rodríguez"}, {"q": "Which player, nicknamed the \"Emperor\", led West Germany to a World Cup win as a libero?", "a": "Beckenbauer"}, {"q": "Who holds the record as the youngest player in World Cup history?", "a": "Norman Whiteside"}, {"q": "Which World Cup's official theme song was \"Waka Waka (This Time for Africa)\"?", "a": "2010"}, {"q": "Who holds the record for the most goals in a single World Cup match (5 goals)?", "a": "Salenko"}, {"q": "Which team beat Germany in the 2002 World Cup final to win the title?", "a": "Brazil"}, {"q": "Who is the only Brazilian player ever to score in two World Cup finals?", "a": "Vavá"}, {"q": "Which World Cup was the first to introduce the red and yellow card system?", "a": "1970"}, {"q": "Who won the Golden Glove at the 2010 World Cup?", "a": "Casillas"}, {"q": "Who won the Golden Boot at the 2022 World Cup?", "a": "Mbappé"}, {"q": "Which World Cup is known for its many upsets and surprise results?", "a": "2002"}, {"q": "Who won the Best Young Player award at the 2014 World Cup?", "a": "Pogba"}, {"q": "Which team beat Argentina in the 1990 World Cup final to win the title?", "a": "West Germany"}, {"q": "Which Colombian player is widely known for scoring an own goal at the 1994 World Cup?", "a": "Andrés Escobar"}, {"q": "Which World Cup featured the official match ball named \"Telstar\"?", "a": "1970"}, {"q": "Who scored a hat-trick against France in the 1958 World Cup semifinal?", "a": "Pelé"}, {"q": "Which team finished third at the 2006 World Cup?", "a": "Germany"}, {"q": "Who holds the record for the fastest goal in World Cup history (11 seconds)?", "a": "Hakan Şükür"}, {"q": "Which World Cup was known as the \"Summer Fairy Tale\" for its exciting matches and vibrant atmosphere?", "a": "2006"}, {"q": "Who won the Best Young Player award at the 2010 World Cup?", "a": "Thomas Müller"}, {"q": "Which team won the 1994 World Cup with Romário as its star striker?", "a": "Brazil"}, {"q": "Which World Cup featured the official match ball named \"Fevernova\"?", "a": "2002"}, {"q": "Who scored France's only goal in the 2006 World Cup final?", "a": "Zidane"}, {"q": "Who was the youngest player to score 2 goals in a single match during the 2018 World Cup?", "a": "Mbappé"}, {"q": "Which team finished third at the 1994 World Cup?", "a": "Sweden"}, {"q": "Who was the first player to score in four World Cups?", "a": "Uwe Seeler"}, {"q": "Which World Cup's official theme song was \"The Cup of Life\"?", "a": "1998"}, {"q": "Who scored 2 goals for Brazil in the 2002 World Cup final?", "a": "Ronaldo"}, {"q": "Which team won the 2022 World Cup in Qatar?", "a": "Argentina"}, {"q": "Which country has won the most World Cup titles?", "a": "Brazil"}, {"q": "Which country hosted the 2018 World Cup?", "a": "Russia"}, {"q": "Who is known as the \"King of Football\" and won three World Cup titles?", "a": "Pelé"}, {"q": "Which team did Germany defeat in the 2014 World Cup final?", "a": "Argentina"}, {"q": "Who won the 2010 South Africa World Cup?", "a": "Spain"}, {"q": "Which team is the only one to have participated in all World Cup tournaments?", "a": "Brazil"}, {"q": "Who was the captain of the Italian team that won the 2006 World Cup?", "a": "Cannavaro"}, {"q": "Who scored the \"Hand of God\" goal at the 1986 World Cup?", "a": "Maradona"}, {"q": "What is the record for the most goals scored by a single player in a World Cup match?", "a": "5"}, {"q": "Who won the 1998 World Cup?", "a": "France"}, {"q": "Who won the 2002 World Cup?", "a": "Brazil"}, {"q": "Who won the Golden Ball at the 2014 World Cup?", "a": "Messi"}, {"q": "Which three countries will co-host the 2026 World Cup?", "a": "United States, Canada, Mexico"}, {"q": "What is the record for the fastest goal in World Cup history?", "a": "11 seconds"}, {"q": "Who won the Golden Boot at the 2010 World Cup?", "a": "Müller"}, {"q": "Which team won the 1990 World Cup?", "a": "Germany"}, {"q": "Why was Zidane sent off with a red card in the 2006 World Cup final?", "a": "Headbutting Materazzi"}, {"q": "Who won the Golden Boot at the 2022 World Cup?", "a": "Mbappé"}, {"q": "Which goalkeeper, nicknamed the \"Black Spider\", won the Ballon d'Or in 1963?", "a": "Yashin"}, {"q": "Who did Germany defeat 7–1 in the 2014 World Cup semifinal?", "a": "Brazil"}, {"q": "Who has played the most matches in World Cup history?", "a": "Messi"}, {"q": "How was the winner of the 1994 World Cup final decided?", "a": "Penalty shoot-out"}, {"q": "Who scored the first goal for Brazil in the 1958 World Cup final?", "a": "Vavá"}, {"q": "In which World Cup were substitutions first introduced?", "a": "1970"}, {"q": "Who holds the record for the longest clean sheet streak in World Cup history (517 minutes)?", "a": "Walter Zenga"}, {"q": "Which player was sent off the fastest in World Cup history?", "a": "José Batista"}, {"q": "Who is the youngest player to score a hat-trick in World Cup history?", "a": "Pelé"}, {"q": "Which French player scored in both the 1998 and 2006 World Cup finals?", "a": "Zidane"}, {"q": "Who holds the record as the oldest player in World Cup history?", "a": "Essam El Hadary"}, {"q": "Who is the only player to register an assist in five World Cups?", "a": "Messi"}, {"q": "Who won the Golden Boot (Best Goalscorer) at the 1998 World Cup?", "a": "Davor Šuker"}, {"q": "In which World Cup did an Asian team first participate?", "a": "1938"}, {"q": "Which World Cup featured the official match ball named \"Brazuca\", the first to be named through fan voting?", "a": "2014"}, {"q": "Who scored the winning penalty for West Germany in the 1990 World Cup final?", "a": "Brehme"}, {"q": "Who holds the record for the most appearances in World Cup history?", "a": "Messi"}, {"q": "Who won the Best Young Player award at the 2006 World Cup?", "a": "Podolski"}, {"q": "Who missed a penalty in the 1994 World Cup final, where Italy lost the title?", "a": "Roberto Baggio"}, {"q": "Who is the only player to have scored an own goal in a World Cup final?", "a": "Mario Mandžukić"}, {"q": "Who holds the record as the oldest goalscorer in World Cup history?", "a": "Roger Milla"}, {"q": "In which World Cup was the penalty shoot-out first introduced to decide knockout matches?", "a": "1982"}, {"q": "Which player appeared in three World Cup finals?", "a": "Cafu"}, {"q": "Which World Cup final saw West Germany beat Argentina 1-0?", "a": "1990"}, {"q": "Which coach led France to the 1998 World Cup title?", "a": "Jacquet"}, {"q": "How many penalty shoot-outs did Italy win at the 2006 World Cup?", "a": "1"}, {"q": "Who won the Golden Ball at the 2002 World Cup?", "a": "Kahn"}, {"q": "What award did Croatia's midfielder Luka Modrić win at the 2018 World Cup?", "a": "Golden Ball"}, {"q": "What award did Argentina's starting goalkeeper Martínez win at the 2022 World Cup?", "a": "Golden Glove"}, {"q": "Who won the Golden Boot at the 2006 World Cup?", "a": "Klose"}, {"q": "Who did Germany lose to in the 2006 World Cup semifinal?", "a": "Italy"}, {"q": "Who scored the winning goal in the 2010 World Cup final?", "a": "Iniesta"}, {"q": "Which club did Mario Götze, scorer of the winning goal in the 2014 World Cup final, play for at the time?", "a": "Bayern Munich"}, {"q": "How did Croatia defeat Brazil in the 2022 World Cup quarterfinal?", "a": "Penalty shoot-out"}, {"q": "Which team won the 2002 World Cup in Korea and Japan?", "a": "Brazil"}, {"q": "Which team won the 2006 World Cup in Germany?", "a": "Italy"}, {"q": "Which team won the 2010 World Cup in South Africa?", "a": "Spain"}, {"q": "Which team won the 2018 World Cup in Russia?", "a": "France"}, {"q": "Who won the Golden Boot at the 2022 World Cup in Qatar?", "a": "Mbappé"}, {"q": "Who won the Golden Ball at the 2010 World Cup in South Africa?", "a": "Diego Forlán"}, {"q": "Who won the Golden Ball at the 2014 World Cup in Brazil?", "a": "Messi"}, {"q": "Which team did Italy beat in the 2006 World Cup final?", "a": "France"}, {"q": "Which country hosted the 2010 World Cup?", "a": "South Africa"}, {"q": "Which country hosted the 2018 World Cup?", "a": "Russia"}, {"q": "In which year was the Ballon d'Or canceled due to the COVID-19 pandemic?", "a": "2020"}, {"q": "Who is the all-time top scorer in men's international football?", "a": "Cristiano Ronaldo"}, {"q": "Which national team does Luka Modrić represent?", "a": "Croatia"}, {"q": "How many goals did Mbappé score in the 2022 World Cup final?", "a": "3"}, {"q": "Which team did Cristiano Ronaldo score a hat-trick against in the World Cup?", "a": "Spain"}, {"q": "Which team was Uruguay playing against when Luis Suárez was sent off for a handball?", "a": "Ghana"}, {"q": "Which World Cup was known for the host country's vuvuzelas?", "a": "2010"}];
+
+const searchInput = document.getElementById('search');
+const statusEl = document.getElementById('status');
+const answerBox = document.getElementById('answerBox');
+const answerLabel = document.getElementById('answerLabel');
+const answerQuestion = document.getElementById('answerQuestion');
+const answerText = document.getElementById('answerText');
+const backLink = document.getElementById('backLink');
+const matchesBox = document.getElementById('matchesBox');
+const emptyMsg = document.getElementById('emptyMsg');
+
+let lastMatches = [];      // current full match list for the active query
+let manualSelection = false; // true if user clicked a specific item
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function highlightTokens(text, tokens) {
+  if (!tokens.length) return escapeHtml(text);
+  // Build a regex that matches any of the tokens (escaped), case-insensitive
+  const escapedTokens = tokens
+    .slice()
+    .sort((a, b) => b.length - a.length) // longer tokens first to avoid partial overlap issues
+    .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp('(' + escapedTokens.join('|') + ')', 'gi');
+  return escapeHtml(text).replace(re, m => '<mark>' + m + '</mark>');
+}
+
+// Note: escapeHtml runs first, then regex on escaped text. Since tokens are
+// plain alphanumerics typically, this is safe for typical query terms.
+
+function tokenize(str) {
+  return str
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function showAnswer(item, { auto }) {
+  answerLabel.textContent = auto ? 'Answer' : 'Answer (selected)';
+  answerQuestion.textContent = item.q;
+  answerText.textContent = item.a;
+  answerBox.classList.add('show');
+  backLink.style.display = auto ? 'none' : 'inline-block';
+  matchesBox.classList.add('hidden');
+  matchesBox.innerHTML = '';
+}
+
+function renderMatchList(matches, tokens) {
+  matchesBox.classList.remove('hidden');
+  const limited = matches.slice(0, 25);
+  matchesBox.innerHTML = limited.map((item, i) =>
+    `<div class="match-item clickable" data-idx="${i}">${highlightTokens(item.q, tokens)}</div>`
+  ).join('');
+  if (matches.length > limited.length) {
+    matchesBox.innerHTML += `<div class="match-item" style="color: var(--muted); font-style: italic;">+ ${matches.length - limited.length} more. Keep typing to narrow further!</div>`;
+  }
+  matchesBox.querySelectorAll('.match-item.clickable').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.getAttribute('data-idx'), 10);
+      manualSelection = true;
+      showAnswer(limited[idx], { auto: false });
+      statusEl.textContent = `Showing selected match (${matches.length} total matched your keywords)`;
+    });
+  });
+}
+
+function render() {
+  const rawQuery = searchInput.value;
+  const tokens = tokenize(rawQuery);
+  manualSelection = false;
+  answerBox.classList.remove('show');
+  emptyMsg.style.display = 'none';
+  matchesBox.classList.add('hidden');
+  matchesBox.innerHTML = '';
+
+  if (!tokens.length) {
+    statusEl.textContent = `${QUIZ_DATA.length} questions loaded. Start typing keywords.`;
+    lastMatches = [];
+    return;
+  }
+
+  // A question matches if every token appears somewhere in its text
+  // (question + answer, so names/years in the answer can help narrow too).
+  const matches = QUIZ_DATA.filter(item => {
+    const haystack = (item.q + ' ' + item.a).toLowerCase();
+    return tokens.every(tok => haystack.includes(tok));
+  });
+  lastMatches = matches;
+
+  if (matches.length === 0) {
+    statusEl.textContent = `0 matches`;
+    emptyMsg.style.display = 'block';
+    return;
+  }
+
+  if (matches.length === 1) {
+    statusEl.textContent = `1 match. Showing answer!`;
+    showAnswer(matches[0], { auto: true });
+    return;
+  }
+
+  statusEl.textContent = `${matches.length} matches. Click one, or keep typing to narrow it down!`;
+  renderMatchList(matches, tokens);
+}
+
+backLink.addEventListener('click', () => {
+  manualSelection = false;
+  answerBox.classList.remove('show');
+  if (lastMatches.length > 1) {
+    statusEl.textContent = `${lastMatches.length} matches. Click one, or keep typing to narrow it down!`;
+    renderMatchList(lastMatches, tokenize(searchInput.value));
+  } else {
+    render();
+  }
+});
+
+searchInput.addEventListener('input', render);
+render();
+</script>
+</body>
+</html>
